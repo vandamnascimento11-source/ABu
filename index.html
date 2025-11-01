@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loja de Roupas - Sistema de Estoque</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTguwrA3-B8kDSRh7TLECH6xJVQ8eFKYo",
+            authDomain: "armazenarroupas.firebaseapp.com",
+            databaseURL: "https://armazenarroupas-default-rtdb.firebaseio.com",
+            projectId: "armazenarroupas",
+            storageBucket: "armazenarroupas.firebasestorage.app",
+            messagingSenderId: "619228324907",
+            appId: "1:619228324907:web:a34e44b916d252b6cff66e",
+            measurementId: "G-W0E8QP51BH"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+
+        window.firebaseConfig = { app, database };
+        window.firebaseDB = { ref, get, set };
+    </script>
+</head>
+<body>
+    <!-- TELA DE LOGIN -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <span class="login-icon">👗</span>
+                <h1 class="login-title">LOJA DE ROUPAS</h1>
+                <p class="login-subtitle">Sistema de Controle de Inventário</p>
+            </div>
+            
+            <div id="loginError" class="login-error"></div>
+            
+            <form class="login-form" onsubmit="fazerLogin(event)">
+                <div class="form-group-login">
+                    <label for="usuario">
+                        <span class="label-icon">👤</span>
+                        Usuário
+                    </label>
+                    <input 
+                        type="text" 
+                        id="usuario" 
+                        placeholder="Digite seu usuário" 
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group-login">
+                    <label for="senha">
+                        <span class="label-icon">🔐</span>
+                        Senha
+                    </label>
+                    <input 
+                        type="password" 
+                        id="senha" 
+                        placeholder="Digite sua senha" 
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">👁️</button>
+                </div>
+                
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
+            
+            <div class="login-footer">
+                Entre em contato com o administrador se esqueceu suas credenciais.
+            </div>
+        </div>
+    </div>
+
+    <!-- PÁGINA PRINCIPAL -->
+    <div id="mainApp" style="display: none;">
+        <button class="logout-btn" onclick="fazerLogout()">🚪 Sair</button>
+
+        <div class="container">
+            <header>
+                <h1>👗 LOJA DE ROUPAS</h1>
+                <p>Sistema Moderno de Controle de Inventário</p>
+            </header>
+
+            <div class="dashboard">
+                <div class="dashboard-card">
+                    <h3>Investimento Total</h3>
+                    <div class="value" id="totalInvestido">R$ 0,00</div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Itens em Estoque</h3>
+                    <div class="value" id="totalItens">0</div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Total de Vendas</h3>
+                    <div class="value" id="totalVendidos">0</div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Faturamento</h3>
+                    <div class="value" id="valorVendas">R$ 0,00</div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="abrirTab('adicionar')">➕ ADICIONAR</button>
+                <button class="tab-btn" onclick="abrirTab('estoque')">📦 ESTOQUE</button>
+                <button class="tab-btn" onclick="abrirTab('vendas')">💰 VENDAS</button>
+                <button class="tab-btn" onclick="abrirTab('relatorios')">📊 RELATÓRIOS</button>
+                <button class="tab-btn" onclick="abrirTab('historico')">📋 HISTÓRICO</button>
+            </div>
+
+            <!-- TAB: ADICIONAR PRODUTO -->
+            <div id="tab-adicionar" class="tab-content active">
+                <div class="section">
+                    <h2>Adicionar Nova Peça de Roupa</h2>
+                    <form id="formProduto" onsubmit="adicionarProduto(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Nome da Peça *</label>
+                                <input type="text" id="nomeProduto" placeholder="Ex: Camiseta Básica" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade *</label>
+                                <input type="number" id="quantidade" min="1" placeholder="Ex: 25" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Preço de Custo (R$) *</label>
+                                <input type="text" id="valorAquisicao" placeholder="Ex: 25,50" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Margem de Lucro (%) *</label>
+                                <input type="number" id="percentualLucro" step="0.01" min="0" placeholder="Ex: 80" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Data de Entrada *</label>
+                                <input type="date" id="dataEntrada" required>
+                            </div>
+                        </div>
+
+                        <div class="calculated-value">
+                            💰 Preço de Venda: R$ <span id="valorVendaCalculado">0,00</span>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="section-header">
+                                <div class="section-icon">👕</div>
+                                <div>
+                                    <h3 class="section-title">Tamanhos Disponíveis</h3>
+                                    <p class="section-subtitle">Selecione todos os tamanhos da sua peça</p>
+                                </div>
+                            </div>
+                            <div class="sizes-wrapper">
+                                <div class="sizes-grid" id="sizeGridAdd">
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">PP</button>
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">P</button>
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">M</button>
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">G</button>
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">GG</button>
+                                    <button type="button" class="size-option" onclick="toggleSize(event, 'sizeGridAdd')">XG</button>
+                                </div>
+                                <div class="sizes-info">
+                                    <span>ℹ️ Você pode selecionar múltiplos tamanhos. Clique para marcar/desmarcar.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="section-header">
+                                <div class="section-icon">🎨</div>
+                                <div>
+                                    <h3 class="section-title">Cores Disponíveis</h3>
+                                    <p class="section-subtitle">Adicione as cores da sua peça com nomes customizados</p>
+                                </div>
+                            </div>
+                            <div class="colors-wrapper">
+                                <div class="color-input-section">
+                                    <input type="text" id="colorName" class="color-name-input" placeholder="Nome da cor (Ex: Azul Celeste, Rosa Pastel)">
+                                    <div class="color-picker-wrapper">
+                                        <input type="color" id="colorPicker" class="color-picker-input" value="#000000">
+                                        <span class="color-preview-emoji">🎨</span>
+                                    </div>
+                                    <button type="button" class="btn-add-color" onclick="adicionarCor(event)">
+                                        <span>+</span>
+                                        <span>ADICIONAR</span>
+                                    </button>
+                                </div>
+                                <div class="colors-list" id="colorsList"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <div class="section-header">
+                                <div class="section-icon">📸</div>
+                                <div>
+                                    <h3 class="section-title">Foto da Peça</h3>
+                                    <p class="section-subtitle">Upload opcional - deixe sua peça ainda mais atraente</p>
+                                </div>
+                            </div>
+                            <div class="image-wrapper">
+                                <div class="image-upload-container" id="uploadContainer">
+                                    <div class="upload-placeholder" id="placeholderContent">
+                                        <div class="placeholder-icon">📷</div>
+                                        <div class="placeholder-text">Adicione uma foto profissional</div>
+                                        <div class="placeholder-subtext">Clique em "Galeria" para adicionar uma imagem</div>
+                                        <div class="upload-buttons-group">
+                                            <label for="imagemProduto" class="image-upload-label">
+                                                <span class="upload-icon">🖼️</span>
+                                                <span>Galeria</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <input type="file" id="imagemProduto" class="image-upload-input" accept="image/*" onchange="previewImage(event)">
+                                    
+                                    <div id="previewContainer" style="display: none;">
+                                        <div class="image-preview-wrapper">
+                                            <img id="previewImg" class="image-preview" alt="Preview">
+                                            <button type="button" class="btn-remove-image" onclick="removerImagem(event)" title="Remover imagem">✕</button>
+                                        </div>
+                                        <span class="image-preview-label">Imagem selecionada ✓</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit">Adicionar ao Estoque</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB: ESTOQUE -->
+            <div id="tab-estoque" class="tab-content">
+                <div class="section">
+                    <h2>Estoque Atual</h2>
+                    <div class="search-container">
+                        <input type="text" class="search-input" id="searchEstoque" placeholder="Buscar peças..." onkeyup="filtrarEstoque()">
+                    </div>
+                    <div id="estoqueContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👔</div>
+                            <p>Nenhuma peça cadastrada ainda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: VENDAS -->
+            <div id="tab-vendas" class="tab-content">
+                <div class="section">
+                    <h2>Histórico de Vendas</h2>
+                    <div class="search-container">
+                        <input type="text" class="search-input" id="searchVendas" placeholder="Buscar vendas..." onkeyup="filtrarVendas()">
+                    </div>
+                    <div id="vendasContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📊</div>
+                            <p>Nenhuma venda registrada ainda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: RELATÓRIOS -->
+            <div id="tab-relatorios" class="tab-content">
+                <div class="section">
+                    <h2>Relatórios e Análises Mensais</h2>
+                    <div class="search-container">
+                        <label for="mesRelatorio" style="font-weight: 700; color: var(--text-dark); margin-right: 10px;">Selecione o Mês:</label>
+                        <input type="month" id="mesRelatorio" class="search-input" style="max-width: 200px;" onchange="atualizarRelatorios()">
+                    </div>
+                    <div id="relatoriosContainer"></div>
+                </div>
+            </div>
+
+            <!-- TAB: MOVIMENTAÇÕES -->
+            <div id="tab-historico" class="tab-content">
+                <div class="section">
+                    <h2>Histórico de Movimentações</h2>
+                    <div class="search-container">
+                        <input type="text" class="search-input" id="searchHistorico" placeholder="Buscar movimentações..." onkeyup="filtrarHistorico()">
+                    </div>
+                    <div id="historicoContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <p>Nenhuma movimentação registrada ainda</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Venda -->
+        <div class="modal-overlay" id="modalVenda">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Registrar Venda</h3>
+                    <button class="btn-close" onclick="fecharModal('modalVenda')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formVenda" onsubmit="confirmarVenda(event)">
+                        <div class="modal-form-group">
+                            <label>Peça</label>
+                            <input type="text" id="modalProdutoNome" disabled>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Tamanho *</label>
+                            <select id="modalTamanho" required>
+                                <option value="">Selecione um tamanho</option>
+                            </select>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Cor *</label>
+                            <select id="modalCor" required>
+                                <option value="">Selecione uma cor</option>
+                            </select>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Quantidade *</label>
+                            <input type="number" id="modalQuantidade" min="1" required>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Método de Pagamento *</label>
+                            <div class="payment-methods">
+                                <div class="payment-option" onclick="selecionarPagamento('PIX', this)">
+                                    <div class="payment-icon">📱</div>
+                                    <div>PIX</div>
+                                </div>
+                                <div class="payment-option" onclick="selecionarPagamento('Crédito', this)">
+                                    <div class="payment-icon">💳</div>
+                                    <div>Crédito</div>
+                                </div>
+                                <div class="payment-option" onclick="selecionarPagamento('Débito', this)">
+                                    <div class="payment-icon">💳</div>
+                                    <div>Débito</div>
+                                </div>
+                                <div class="payment-option" onclick="selecionarPagamento('Dinheiro', this)">
+                                    <div class="payment-icon">💵</div>
+                                    <div>Dinheiro</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Data de Saída *</label>
+                            <input type="date" id="modalDataSaida" required>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn-confirmar">Confirmar Venda</button>
+                            <button type="button" class="btn-cancelar" onclick="fecharModal('modalVenda')">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Edição de Produto -->
+        <div class="modal-overlay" id="modalEditar">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Editar Peça</h3>
+                    <button class="btn-close" onclick="fecharModal('modalEditar')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditar" onsubmit="confirmarEdicao(event)">
+                        <div class="modal-form-group">
+                            <label>Nome da Peça</label>
+                            <input type="text" id="editNomeProduto" required>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Quantidade</label>
+                            <input type="number" id="editQuantidade" min="1" required>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Preço de Custo (R$)</label>
+                            <input type="text" id="editValorAquisicao" required>
+                        </div>
+                        <div class="modal-form-group">
+                            <label>Margem de Lucro (%)</label>
+                            <input type="number" id="editPercentualLucro" step="0.01" min="0" required>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn-confirmar">Salvar Alterações</button>
+                            <button type="button" class="btn-cancelar" onclick="fecharModal('modalEditar')">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Exclusão -->
+        <div class="modal-overlay" id="modalDelete">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Confirmar Exclusão</h3>
+                    <button class="btn-close" onclick="fecharModal('modalDelete')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="delete-modal-icon">🗑️</div>
+                    <p class="delete-modal-text">Você está prestes a remover:</p>
+                    <div class="delete-modal-product" id="deleteProductName"></div>
+                    <p class="delete-modal-text">Esta ação não poderá ser desfeita.</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-confirmar" onclick="confirmarDelete()">Sim, Remover</button>
+                    <button class="btn-cancelar" onclick="fecharModal('modalDelete')">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Alerta -->
+        <div class="modal-overlay alert-modal" id="modalAlert">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Atenção</h3>
+                    <button class="btn-close" onclick="fecharModal('modalAlert')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert-icon">⚠️</div>
+                    <p class="alert-message" id="alertMessage"></p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-confirmar" onclick="fecharModal('modalAlert')" style="width: 100%;">Entendi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
