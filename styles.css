@@ -1742,11 +1742,45 @@ button:active {
     }
 }
 
+/* Mobile: Ajustar área de cores para colunar */
 @media (max-width: 768px) {
-    .login-box {
-        padding: 50px 35px;
-        max-width: 100%;
-        border-radius: 24px;
+    .color-input-section {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    .color-picker-wrapper {
+        width: 100% !important;
+        justify-content: flex-start;
+        gap: 12px !important;
+    }
+    .color-picker-input {
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 100px !important;
+        height: 45px !important;
+        padding: 4px !important;
+    }
+    .color-preview-emoji {
+        font-size: 1.7em !important;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .btn-add-color {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    @media (max-width: 480px) {
+    .color-input-section input,
+    .color-picker-wrapper {
+        width: 100% !important;
+    }
+    .color-input-section {
+        gap: 8px !important;
+    }
     }
 
     .login-title {
